@@ -26,7 +26,11 @@ public class ValidationExceptionMapper implements ExceptionMapper<ConstraintViol
     public Response toResponse(ConstraintViolationException exception) {
         Map<String, String> fieldErrors = new TreeMap<>();
         for (ConstraintViolation<?> violation : exception.getConstraintViolations()) {
-            fieldErrors.put(violation.getPropertyPath().toString(), violation.getMessage());
+            String template = violation.getMessageTemplate();
+            String message = template.startsWith("{") && template.endsWith("}")
+                    ? messages.get(template.substring(1, template.length() - 1), headers)
+                    : violation.getMessage();
+            fieldErrors.put(violation.getPropertyPath().toString(), message);
         }
 
         ApiError error = new ApiError(

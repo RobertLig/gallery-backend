@@ -19,7 +19,7 @@ public class MessageService {
         return bundle.getString(key);
     }
 
-    private Locale resolveLocale(List<Locale> acceptableLanguages) {
+    public Locale resolveLocale(List<Locale> acceptableLanguages) {
         for (Locale locale : acceptableLanguages) {
             String language = locale.getLanguage();
             if ("pl".equals(language)) {
