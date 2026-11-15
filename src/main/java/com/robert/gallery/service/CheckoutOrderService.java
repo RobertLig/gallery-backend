@@ -13,6 +13,10 @@ import com.robert.gallery.domain.Painting;
 import com.robert.gallery.domain.PaintingStatus;
 import com.robert.gallery.domain.User;
 import com.robert.gallery.dto.CheckoutOrderResponse;
+import com.robert.gallery.dto.AdminOrderResponse;
+import com.robert.gallery.dto.CollectionDetailsResponse;
+import com.robert.gallery.dto.OrderHistoryResponse;
+import com.robert.gallery.dto.PageResponse;
 import com.robert.gallery.repository.AuctionRepository;
 import com.robert.gallery.repository.BidRepository;
 import com.robert.gallery.repository.CartItemRepository;
@@ -40,6 +44,8 @@ public class CheckoutOrderService {
     private static final Duration CART_PAYMENT_WINDOW = Duration.ofMinutes(31);
     private static final Duration AUCTION_PAYMENT_WINDOW = Duration.ofHours(24);
     private static final Duration ASYNC_PAYMENT_WINDOW = Duration.ofHours(48);
+    private static final int MAX_PAGE_SIZE = 100;
+    private static final int MAX_PAGE_INDEX = 10_000;
 
     @Inject
     CheckoutOrderRepository orders;
@@ -64,6 +70,9 @@ public class CheckoutOrderService {
 
     @ConfigProperty(name = "app.gallery.currency")
     String currencyCode;
+
+    @ConfigProperty(name = "app.collection.address")
+    String collectionAddress;
 
     @Transactional
     public CheckoutDraft createCartOrder(String userSubject) {
@@ -180,6 +189,7 @@ public class CheckoutOrderService {
                 order.status.name(),
                 order.totalMinor,
                 order.currency,
+                order.fulfillmentMode.name(),
                 order.expiresAt
         );
     }
@@ -193,9 +203,37 @@ public class CheckoutOrderService {
                         order.status.name(),
                         order.totalMinor,
                         order.currency,
+                        order.fulfillmentMode.name(),
                         order.expiresAt
                 ))
                 .toList();
+    }
+
+    @Transactional
+    public PageResponse<OrderHistoryResponse> getOrderHistory(String userSubject, int page, int size) {
+        validatePage(page, size);
+        User user = requireUser(userSubject);
+        List<OrderHistoryResponse> pageItems = orders.listByUser(user.id, page, size).stream()
+                .map(OrderHistoryResponse::from)
+                .toList();
+        long total = orders.countByUser(user.id);
+        return new PageResponse<>(pageItems, page, size, total, (int) Math.ceil((double) total / size));
+    }
+
+    @Transactional
+    public PageResponse<AdminOrderResponse> getAdminOrders(int page, int size) {
+        validatePage(page, size);
+        List<AdminOrderResponse> pageItems = orders.listAll(page, size).stream()
+                .map(order -> new AdminOrderResponse(
+                        OrderHistoryResponse.from(order),
+                        order.user == null ? null : order.user.id,
+                        order.user == null ? null : order.user.displayName,
+                        order.user == null ? null : order.user.email,
+                        order.user == null ? null : order.user.phone
+                ))
+                .toList();
+        long total = orders.count();
+        return new PageResponse<>(pageItems, page, size, total, (int) Math.ceil((double) total / size));
     }
 
     @Transactional
@@ -208,6 +246,24 @@ public class CheckoutOrderService {
             throw new DomainException(Response.Status.CONFLICT, "error.checkout.order.not-pending");
         }
         return toDraft(order);
+    }
+
+    @Transactional
+    public CollectionDetailsResponse getCollectionDetails(String userSubject, UUID orderId) {
+        User requester = requireUser(userSubject);
+        CheckoutOrder order = orders.findByIdOptional(orderId)
+                .orElseThrow(() -> new DomainException(Response.Status.NOT_FOUND, "error.checkout.order.not-found"));
+        boolean isOwner = order.user != null && order.user.id.equals(requester.id);
+        if (!isOwner && requester.role != com.robert.gallery.domain.UserRole.ADMIN) {
+            throw new DomainException(Response.Status.NOT_FOUND, "error.checkout.order.not-found");
+        }
+        if (!isOwner && requester.role == com.robert.gallery.domain.UserRole.ADMIN) {
+            return collectionDetails();
+        }
+        if (order.status != CheckoutOrderStatus.PAID) {
+            throw new DomainException(Response.Status.CONFLICT, "error.checkout.collection.not-ready");
+        }
+        return collectionDetails();
     }
 
     @Transactional
@@ -361,6 +417,20 @@ public class CheckoutOrderService {
     private boolean isAwaitingPayment(CheckoutOrderStatus status) {
         return status == CheckoutOrderStatus.PENDING_PAYMENT
                 || status == CheckoutOrderStatus.ASYNC_PAYMENT_PENDING;
+    }
+
+    private void validatePage(int page, int size) {
+        if (page < 0 || page > MAX_PAGE_INDEX || size < 1 || size > MAX_PAGE_SIZE) {
+            throw new DomainException(Response.Status.BAD_REQUEST, "error.pagination.invalid");
+        }
+    }
+
+    private CollectionDetailsResponse collectionDetails() {
+        if (collectionAddress == null || collectionAddress.isBlank()
+                || "not-configured".equalsIgnoreCase(collectionAddress.trim())) {
+            throw new DomainException(Response.Status.SERVICE_UNAVAILABLE, "error.collection.address.unconfigured");
+        }
+        return new CollectionDetailsResponse(collectionAddress.trim(), "PICKUP");
     }
 
     private User requireUser(String subject) {

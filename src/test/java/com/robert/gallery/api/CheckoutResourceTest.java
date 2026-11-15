@@ -89,6 +89,7 @@ class CheckoutResourceTest {
                 .then()
                 .statusCode(200)
                 .body("checkoutUrl", equalTo("https://checkout.stripe.test/session"))
+                .body("fulfillmentMode", equalTo("PICKUP"))
                 .body("expiresAt", notNullValue())
                 .body("orderId", notNullValue())
                 .extract().path("orderId");
@@ -100,12 +101,64 @@ class CheckoutResourceTest {
 
         given()
                 .auth().oauth2(token(userId))
+                .queryParam("size", 1)
+                .when().get("/api/v1/checkout/orders")
+                .then()
+                .statusCode(200)
+                .body("items.size()", equalTo(1))
+                .body("items[0].id", equalTo(orderId))
+                .body("items[0].items[0].paintingId", equalTo(paintingId.toString()))
+                .body("items[0].items[0].paintingTitle", equalTo("Checkout painting"))
+                .body("items[0].createdAt", notNullValue())
+                .body("totalItems", equalTo(1));
+
+        given()
+                .auth().oauth2(token(userId))
+                .queryParam("page", -1)
+                .when().get("/api/v1/checkout/orders")
+                .then()
+                .statusCode(400);
+
+        given()
+                .auth().oauth2(token(userId))
+                .when().get("/api/v1/admin/orders")
+                .then()
+                .statusCode(403);
+
+        UUID orderAdminId = createAdminUser();
+        given()
+                .auth().oauth2(token(orderAdminId, "ADMIN"))
+                .queryParam("size", 1)
+                .when().get("/api/v1/admin/orders")
+                .then()
+                .statusCode(200)
+                .body("items[0].order.id", equalTo(orderId))
+                .body("items[0].buyerEmail", equalTo(userId + "@example.test"));
+
+        given()
+                .auth().oauth2(token(userId))
                 .when().get("/api/v1/checkout/orders/" + orderId)
                 .then()
                 .statusCode(200)
                 .body("status", equalTo("PENDING_PAYMENT"))
                 .body("totalMinor", equalTo(125000))
-                .body("currency", equalTo("PLN"));
+                .body("currency", equalTo("PLN"))
+                .body("fulfillmentMode", equalTo("PICKUP"));
+
+        given()
+                .auth().oauth2(token(userId))
+                .when().get("/api/v1/checkout/orders/" + orderId + "/collection-details")
+                .then()
+                .statusCode(409);
+
+        UUID adminId = createAdminUser();
+        given()
+                .auth().oauth2(token(adminId, "ADMIN"))
+                .when().get("/api/v1/checkout/orders/" + orderId + "/collection-details")
+                .then()
+                .statusCode(200)
+                .body("address", equalTo("Test collection address"))
+                .body("fulfillmentMode", equalTo("PICKUP"));
 
         given()
                 .auth().oauth2(token(userId))
@@ -168,6 +221,20 @@ class CheckoutResourceTest {
                 .then()
                 .statusCode(200)
                 .body("status", equalTo("PAID"));
+
+        given()
+                .auth().oauth2(token(userId))
+                .when().get("/api/v1/checkout/orders/" + orderId + "/collection-details")
+                .then()
+                .statusCode(200)
+                .body("address", equalTo("Test collection address"))
+                .body("fulfillmentMode", equalTo("PICKUP"));
+
+        given()
+                .auth().oauth2(token(anotherUserId))
+                .when().get("/api/v1/checkout/orders/" + orderId + "/collection-details")
+                .then()
+                .statusCode(404);
 
         given()
                 .when().get("/api/v1/paintings/" + paintingId)
@@ -358,6 +425,19 @@ class CheckoutResourceTest {
         return id;
     }
 
+    private UUID createAdminUser() {
+        UUID id = UUID.randomUUID();
+        User user = new User();
+        user.id = id;
+        user.googleSubject = id.toString();
+        user.email = id + "@example.test";
+        user.displayName = "Gallery owner";
+        user.role = UserRole.ADMIN;
+        user.locale = UserLocale.EN;
+        QuarkusTransaction.requiringNew().run(() -> users.persist(user));
+        return id;
+    }
+
     private UUID createPainting() {
         Painting painting = new Painting();
         painting.title = "Checkout painting";
@@ -402,9 +482,13 @@ class CheckoutResourceTest {
     }
 
     private String token(UUID subject) {
+        return token(subject, "USER");
+    }
+
+    private String token(UUID subject, String role) {
         return Jwt.issuer("gallery-app")
                 .subject(subject.toString())
-                .groups("USER")
+                .groups(role)
                 .expiresAt(Instant.now().plusSeconds(600))
                 .sign();
     }

@@ -8,6 +8,7 @@ public record CheckoutOrderResponse(
         String status,
         long totalMinor,
         String currency,
+        String fulfillmentMode,
         Instant expiresAt
 ) {
 }

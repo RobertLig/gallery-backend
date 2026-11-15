@@ -2,6 +2,7 @@ package com.robert.gallery.api;
 
 import com.robert.gallery.dto.CheckoutOrderResponse;
 import com.robert.gallery.dto.CheckoutResponse;
+import com.robert.gallery.dto.CollectionDetailsResponse;
 import com.robert.gallery.service.CheckoutOrderService;
 import com.robert.gallery.service.CheckoutService;
 import io.quarkus.security.Authenticated;
@@ -15,6 +16,8 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import java.util.UUID;
+import com.robert.gallery.dto.OrderHistoryResponse;
+import com.robert.gallery.dto.PageResponse;
 
 @Path("/api/v1/checkout")
 @Produces(MediaType.APPLICATION_JSON)
@@ -37,6 +40,19 @@ public class CheckoutResource {
     }
 
     @GET
+    @Path("/orders")
+    public PageResponse<OrderHistoryResponse> getOrderHistory(
+            @jakarta.ws.rs.QueryParam("page") Integer page,
+            @jakarta.ws.rs.QueryParam("size") Integer size
+    ) {
+        return orders.getOrderHistory(
+                principal.getSubject(),
+                page == null ? 0 : page,
+                size == null ? 20 : size
+        );
+    }
+
+    @GET
     @Path("/orders/{id}")
     public CheckoutOrderResponse getOrder(@PathParam("id") UUID id) {
         return orders.getOrder(principal.getSubject(), id);
@@ -52,5 +68,11 @@ public class CheckoutResource {
     @Path("/orders/{id}/session")
     public CheckoutResponse retryCheckout(@PathParam("id") UUID id) {
         return checkout.retryCheckout(principal.getSubject(), id);
+    }
+
+    @GET
+    @Path("/orders/{id}/collection-details")
+    public CollectionDetailsResponse getCollectionDetails(@PathParam("id") UUID id) {
+        return orders.getCollectionDetails(principal.getSubject(), id);
     }
 }

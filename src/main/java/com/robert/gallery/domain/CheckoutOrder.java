@@ -37,6 +37,10 @@ public class CheckoutOrder {
     @Column(nullable = false, length = 16)
     public CheckoutOrderType type;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fulfillment_mode", nullable = false, length = 16)
+    public FulfillmentMode fulfillmentMode = FulfillmentMode.PICKUP;
+
     @Column(name = "auction_id")
     public UUID auctionId;
 

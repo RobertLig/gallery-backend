@@ -74,7 +74,7 @@ public class CheckoutService {
         try {
             StripeCheckoutSession session = stripe.createSession(draft);
             orders.attachStripeSession(draft.orderId(), session);
-            return new CheckoutResponse(draft.orderId(), session.url(), session.expiresAt());
+            return new CheckoutResponse(draft.orderId(), session.url(), "PICKUP", session.expiresAt());
         } catch (StripeException exception) {
             LOG.errorf(exception, "Could not create Stripe Checkout session for order %s", draft.orderId());
             throw new DomainException(Response.Status.SERVICE_UNAVAILABLE, "error.payment.unavailable");

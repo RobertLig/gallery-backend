@@ -21,8 +21,8 @@ public class Bid {
     @JoinColumn(name = "auction_id", nullable = false)
     public Auction auction;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
     public User bidder;
 
     @Column(name = "amount_minor", nullable = false)

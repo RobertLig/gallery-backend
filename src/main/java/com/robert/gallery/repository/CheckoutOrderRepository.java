@@ -33,4 +33,27 @@ public class CheckoutOrderRepository implements PanacheRepositoryBase<CheckoutOr
                 userId, CheckoutOrderStatus.PENDING_PAYMENT, CheckoutOrderStatus.ASYNC_PAYMENT_PENDING)
                 .list();
     }
+
+    public java.util.List<CheckoutOrder> listByUser(UUID userId, int page, int size) {
+        return find("user.id = ?1 order by createdAt desc, id desc", userId)
+                .page(page, size)
+                .list();
+    }
+
+    public long countByUser(UUID userId) {
+        return count("user.id", userId);
+    }
+
+    public boolean hasPendingByUser(UUID userId) {
+        return count("user.id = ?1 and status in (?2, ?3)",
+                userId,
+                CheckoutOrderStatus.PENDING_PAYMENT,
+                CheckoutOrderStatus.ASYNC_PAYMENT_PENDING) > 0;
+    }
+
+    public java.util.List<CheckoutOrder> listAll(int page, int size) {
+        return find("order by createdAt desc, id desc")
+                .page(page, size)
+                .list();
+    }
 }

@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -25,6 +26,10 @@ public class BidRepository implements PanacheRepositoryBase<Bid, UUID> {
     public Optional<Bid> highestForAuction(UUID auctionId) {
         return find("auction.id = ?1 order by amountMinor desc, placedAt asc", auctionId)
                 .firstResultOptional();
+    }
+
+    public boolean hasBidWithinUserCommitmentWindow(UUID userId, Instant now) {
+        return count("bidder.id = ?1 and auction.endsAt > ?2", userId, now.minus(java.time.Duration.ofHours(24))) > 0;
     }
 
     public List<Bid> recentByAuction(UUID auctionId, int limit) {
