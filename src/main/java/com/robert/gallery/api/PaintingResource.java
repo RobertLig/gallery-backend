@@ -10,11 +10,13 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.annotation.security.PermitAll;
 
 import java.util.UUID;
 
 @Path("/api/v1/paintings")
 @Produces(MediaType.APPLICATION_JSON)
+@PermitAll
 public class PaintingResource {
 
     @Inject

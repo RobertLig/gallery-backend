@@ -41,7 +41,6 @@ GOOGLE_CLIENT_ID=995827113545-eljgj7lpk0jannjvieacsgc932r1kh9h.apps.googleuserco
 
 # Admin configuration
 ADMIN_EMAIL=your-admin-email@gmail.com
-ADMIN_PHONE=+48123456789
 
 # CORS
 CORS_ORIGINS=http://localhost:5173
@@ -95,7 +94,6 @@ GOOGLE_CLIENT_ID=995827113545-eljgj7lpk0jannjvieacsgc932r1kh9h.apps.googleuserco
 
 # Admin configuration
 ADMIN_EMAIL=your-admin-email@gmail.com
-ADMIN_PHONE=+48123456789
 
 # Neon PostgreSQL
 QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://your-neon-host/your-database

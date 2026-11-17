@@ -6,6 +6,7 @@ import com.robert.gallery.dto.PageResponse;
 import com.robert.gallery.dto.PlaceBidRequest;
 import com.robert.gallery.service.AuctionService;
 import io.quarkus.security.Authenticated;
+import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -24,6 +25,7 @@ import java.util.UUID;
 
 @Path("/api/v1/auctions")
 @Produces(MediaType.APPLICATION_JSON)
+@PermitAll
 public class AuctionResource {
 
     @Inject

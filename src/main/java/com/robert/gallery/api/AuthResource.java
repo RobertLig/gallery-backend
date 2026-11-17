@@ -22,10 +22,12 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import jakarta.annotation.security.PermitAll;
 
 @Path("/api/v1/auth")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
+@PermitAll
 public class AuthResource {
 
     private static final String REFRESH_COOKIE = "gallery_refresh";
